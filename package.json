@@ -21,8 +21,9 @@
     "preversion": "yarn test && yarn build",
     "version": "git add -A",
     "postversion": "git push && git push --tags",
-    "build": "rm -rf lib && tsc",
-    "test": "jest"
+    "clean": "rm -rf lib",
+    "build": "yarn clean && tsc",
+    "test": "yarn clean && jest"
   },
   "devDependencies": {
     "@types/jest": "^26.0.19",

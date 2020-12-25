@@ -15,12 +15,17 @@ class _Signal {
   }
 }
 
-export interface Signal<T> {
-  emit(value: T): void;
-  observe(onValue: (value: T) => void, onDispose?: () => void): () => void;
-}
+export type Signal<T> = T extends void
+  ? {
+      emit(): void;
+      observe(onValue: () => void, onDispose?: () => void): () => void;
+    }
+  : {
+      emit(value: T): void;
+      observe(onValue: (value: T) => void, onDispose?: () => void): () => void;
+    };
 
-export const signal = <T>(): Signal<T> => new _Signal();
+export const signal = <T = void>(): Signal<T> => new (_Signal as any)();
 
 export class AggregateError extends Error {
   constructor(readonly errors: ReadonlyArray<Error>) {
@@ -52,18 +57,29 @@ export const disposable = (...fns: Function[]) => {
   };
 };
 
-export type Deferred<T> = Promise<T> & {
-  resolve(value: T): void;
-  reject(error: Error): void;
-};
-
 export const sleep = (ms: number) => new Promise((res) => setTimeout(res, ms));
 
-export const deferred = <T>(): Deferred<T> => {
+export type Deferred<T> = Promise<T> & {
+  reject(error: Error): Deferred<T>;
+} & (T extends void
+    ? {
+        resolve(): Deferred<T>;
+      }
+    : {
+        resolve(x: T): Deferred<T>;
+      });
+
+export const deferred = <T = void>(): Deferred<T> => {
   const self: any = {};
   const p = new Promise((res, rej) => {
-    self.resolve = res;
-    self.reject = rej;
+    self.resolve = (x: any) => {
+      res(x);
+      return self;
+    };
+    self.reject = (e: any) => {
+      rej(e);
+      return self;
+    };
   });
   self.then = p.then.bind(p);
   self.catch = p.catch.bind(p);
@@ -71,19 +87,21 @@ export const deferred = <T>(): Deferred<T> => {
   return self;
 };
 
-export const debounced = <T>(fn: (...args: T[]) => void, ms: number) => {
+export type Action = (...args: any[]) => void;
+
+export const debounced = <T extends Action>(fn: T, ms: number) => {
   let tid: NodeJS.Timeout;
 
-  return (...args: T[]) => {
+  return (...args: Parameters<T>) => {
     clearTimeout(tid);
     tid = setTimeout(() => fn(...args), ms);
   };
 };
 
-export const throttled = <T>(fn: (...args: T[]) => void, ms: number) => {
+export const throttled = <T extends Action>(fn: T, ms: number) => {
   let muted = false;
 
-  return (...args: T[]) => {
+  return (...args: Parameters<T>) => {
     if (muted) return;
 
     fn(...args);

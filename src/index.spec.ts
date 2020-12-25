@@ -3,7 +3,7 @@ import * as index from "./index";
 jest.useFakeTimers();
 
 test("signal", () => {
-  const s = index.signal();
+  const s = index.signal<number>();
   const spyValue = jest.fn();
   const spyDispose = jest.fn();
   const sub = s.observe(spyValue, spyDispose);
@@ -49,7 +49,7 @@ describe("deferred", () => {
     const spyThen = jest.fn();
     const spyCatch = jest.fn();
     const spyFinally = jest.fn();
-    const d = index.deferred();
+    const d = index.deferred<number>();
 
     const p = d.then(spyThen).catch(spyCatch).finally(spyFinally);
     d.resolve(1);
