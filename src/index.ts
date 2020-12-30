@@ -4,7 +4,17 @@ class _Signal {
   private readonly fns = new Set<any>();
 
   emit(value: any) {
-    for (const fn of this.fns) fn(value);
+    const errors = [];
+
+    for (const fn of this.fns) {
+      try {
+        fn(value);
+      } catch (e) {
+        errors.push(e);
+      }
+    }
+
+    if (errors.length) throw new AggregateError(errors);
   }
 
   observe(onValue: any, onDispose: any = noop) {
