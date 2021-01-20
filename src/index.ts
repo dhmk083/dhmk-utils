@@ -80,20 +80,15 @@ export type Deferred<T> = Promise<T> & {
       });
 
 export const deferred = <T = void>(): Deferred<T> => {
-  const self: any = {};
-  const p = new Promise((res, rej) => {
-    self.resolve = (x: any) => {
-      res(x);
-      return self;
-    };
-    self.reject = (e: any) => {
-      rej(e);
-      return self;
-    };
+  let resolve: any;
+  let reject: any;
+
+  const self: any = new Promise((res, rej) => {
+    resolve = res;
+    reject = rej;
   });
-  self.then = p.then.bind(p);
-  self.catch = p.catch.bind(p);
-  self.finally = p.finally.bind(p);
+  self.resolve = (x: any) => (resolve(x), self);
+  self.reject = (e: any) => (reject(e), self);
   return self;
 };
 
