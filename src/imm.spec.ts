@@ -12,6 +12,7 @@ describe("array", () => {
   });
 
   test("remove", () => {
+    expect(array.remove(arr, 2)).toEqual([1, 3, 4, 5]);
     expect(array.remove(arr, (x) => x % 2 === 0)).toEqual([1, 3, 5]);
   });
 

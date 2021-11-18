@@ -89,3 +89,30 @@ export function createFactoryAs<A>() {
 export const call = <T>(fn: () => T) => fn();
 
 export const deepReadonly = <T>(x: T) => x as DeepReadonly<T>;
+
+type Merge = {
+  <T>(a: T, b: Partial<T>): T;
+  <T, P = Partial<T>>(b: P): (a: T) => T;
+};
+
+export const merge: Merge = (a, b?) => {
+  return b ? { ...a, ...b } : (b) => ({ ...b, ...a });
+};
+
+export const join = <A extends string, B extends string, S extends string>(
+  a: A,
+  sep: S,
+  b: B
+) => (a + sep + b) as `${A}${S}${B}`;
+
+export const namespace =
+  <S extends string>(s: S) =>
+  <SS extends string>(suffix: SS) =>
+    join(s, "/", suffix);
+
+export function assert(
+  condition: any,
+  msg = "Assertion failed"
+): asserts condition {
+  if (!condition) throw new Error(msg);
+}

@@ -1,3 +1,9 @@
+export declare class Tag<T> {
+  private __$$unique_name$$__: T;
+}
+
+export type Tagged<T, U> = T & Tag<U>;
+
 export type StrKeyOf<T> = Extract<keyof T, string>;
 
 export type AnyFunction = (...args: any) => any;

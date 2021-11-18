@@ -1,6 +1,6 @@
 export const array = {
   insert<T>(src: ReadonlyArray<T>, i: number, ...values: T[]) {
-    return src.slice(0, i).concat(values).concat(src.slice(i, src.length));
+    return src.slice(0, i).concat(values).concat(src.slice(i));
   },
 
   append<T>(src: ReadonlyArray<T>, ...values: T[]) {
@@ -9,9 +9,15 @@ export const array = {
 
   remove<T>(
     src: ReadonlyArray<T>,
-    pred: (v: T, i: number, a: ReadonlyArray<T>) => boolean
+    what: T extends Function
+      ? (v: T, i: number, a: ReadonlyArray<T>) => boolean
+      : T | ((v: T, i: number, a: ReadonlyArray<T>) => boolean)
   ) {
-    return src.filter((v, i, a) => !pred(v, i, a));
+    const keep =
+      typeof what === "function"
+        ? (v, i, a) => !what(v, i, a)
+        : (v) => v !== what;
+    return src.filter(keep);
   },
 
   set<T>(
@@ -71,5 +77,12 @@ export const object = {
   delete<T extends object, K extends keyof T = keyof T>(obj: T, key: K) {
     const { [key]: _, ...rest } = obj;
     return rest;
+  },
+
+  merge<T extends object>(
+    obj: T,
+    what: Partial<T> | ((value: T) => Partial<T>)
+  ) {
+    return { ...obj, ...(typeof what === "function" ? what(obj) : what) } as T;
   },
 } as const;

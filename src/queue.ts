@@ -1,119 +1,76 @@
-import { deferred } from "./fn";
-import { cancellable, CancelledError, Cancellable } from "./cancellable";
-import { UnwrapPromise } from "./types";
+import { deferred, toPromise } from "./fn";
+import { Tagged } from "./types";
 
 export function queue() {
-  let head: any = Promise.resolve();
+  let head = Promise.resolve();
 
-  return function <T>(fn: () => Promise<T>): Promise<UnwrapPromise<T>> {
-    head = new Promise<void>(async (headRes) => {
-      await head;
+  return function <T>(fn: () => Promise<T>): Promise<T> {
+    const p = deferred<T>();
 
-      let p;
-
-      try {
-        p = fn();
-      } catch (e) {
-        p = Promise.reject(e);
-      }
-
-      p.then(
-        (x) => {
-          def.resolve(x);
-          headRes();
-        },
-        (x) => {
-          def.reject(x);
-          headRes();
-        }
-      );
+    head = head.then(() => {
+      p.resolve(toPromise(fn) as any);
     });
 
-    const def = deferred<T>();
-    return def as any;
+    return p as any;
   };
 }
 
-export function chain(create: (fn: any) => [Promise<any>, Function]) {
+export type Cancelled = Tagged<{}, "Cancelled">;
+export const Cancelled = {} as Cancelled;
+
+export function createChain(
+  create: (arg: unknown) => [task: Promise<unknown>, abort: Function]
+) {
   const q = queue();
   let p;
-  let cancel;
+  let abort;
   let prev = { cancelled: false };
 
-  return function <T>(fn: () => Promise<T>) {
+  return function (arg: unknown) {
     prev.cancelled = true;
-    cancel?.();
+    abort?.();
     const cc = (prev = { cancelled: false });
 
-    return q<CancelledError | T>(() => {
-      if (cc.cancelled) return Promise.resolve(new CancelledError());
+    return q<unknown | Cancelled>(() => {
+      if (cc.cancelled) return Promise.resolve(Cancelled);
 
-      [p, cancel] = create(fn);
+      [p, abort] = create(arg);
       return p;
     });
   };
 }
 
-export function ctokenChain(): <T>(
-  fn: (ct: Cancellable) => Promise<T>
-) => Promise<T> {
-  return chain((fn) => {
-    const ctoken = cancellable();
-    return [fn(ctoken), ctoken.cancel];
+export function chain(): <T>(
+  fn: (as: AbortSignal) => Promise<T>
+) => Promise<T | Cancelled> {
+  return createChain((fn: any) => {
+    const ac = new AbortController();
+    return [fn(ac.signal), ac.abort.bind(ac)];
   }) as any;
 }
 
-export function flowChain() {
-  return chain(function (this: any, fn) {
+export function flowChain(): <T>(
+  fn: () => Promise<T> & { cancel() }
+) => Promise<T | Cancelled> {
+  return createChain((fn: any) => {
     const flow = fn();
-    return [flow, flow.cancel];
-  });
+    return [flow, flow.cancel.bind(flow)];
+  }) as any;
 }
 
 export function priorityQueue(q = queue()) {
   const fns: any[] = [];
 
-  return function <T>(
-    fn: () => Promise<T>,
-    priority = 0
-  ): Promise<UnwrapPromise<T>> {
-    const entry = { fn, priority, p: deferred<UnwrapPromise<T>>() };
+  return function <T>(fn: () => Promise<T>, priority = 0): Promise<T> {
+    const entry = { fn, priority, p: deferred<T>() };
     fns.push(entry);
-    fns.sort((a, b) => a.priority - b.priority);
+    fns.sort((a, b) => b.priority - a.priority);
 
-    q(() => {
-      const _entry = fns.pop();
-      return _entry.p.resolve(_entry.fn());
+    q(async () => {
+      const _entry = fns.shift();
+      _entry.p.resolve(toPromise(_entry.fn));
     });
 
     return entry.p;
-  };
-}
-
-export function pLimit<A extends unknown[] = any, T = any>(
-  fn: (...args: A) => Promise<T>,
-  limit: number
-): (...args: A) => Promise<UnwrapPromise<T>> {
-  const stack: any[] = [];
-
-  function run() {
-    if (limit > 0) {
-      const entry = stack.shift();
-      if (!entry) return;
-
-      --limit;
-      entry.p.resolve(fn(...entry.args)).finally(() => {
-        ++limit;
-        run();
-      });
-    }
-  }
-
-  return function (...args: A): any {
-    const p = deferred();
-    stack.push({ p, args });
-
-    run();
-    return p;
   };
 }

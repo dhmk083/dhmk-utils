@@ -1,5 +1,3 @@
-import { signal } from "./signal";
-
 export class CustomError extends Error {
   constructor() {
     super();
@@ -33,19 +31,6 @@ export class DomainError<T, M> extends CustomError {
       this.toString = this.error.toString.bind(this.error);
     }
   }
-}
-
-export function errorSignal() {
-  const s = signal<Error>();
-
-  return {
-    subscribe: s.subscribe,
-    emit: (e: Error) => {
-      if (s.getListenersCount() === 0) throw e;
-
-      s.emit(e);
-    },
-  };
 }
 
 export function handleGlobalError(
