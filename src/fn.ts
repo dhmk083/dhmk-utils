@@ -1,7 +1,7 @@
-import { AnyFunction, UnwrapPromise } from "./types";
+import { PromiseType } from "./types";
 import { noop } from "./std";
 
-export const toPromise = <T>(fn: () => Promise<T>) => {
+export const toPromise = <T>(fn: () => PromiseType<T>): Promise<T> => {
   try {
     return Promise.resolve(fn());
   } catch (e) {
@@ -10,8 +10,8 @@ export const toPromise = <T>(fn: () => Promise<T>) => {
 };
 
 export type Deferred<T> = Promise<T> & {
-  resolve(x: T): Promise<T>;
-  reject(error: any): Promise<T>;
+  resolve(x: PromiseType<T>): Promise<T>;
+  reject(error: any): Promise<never>;
 };
 
 export const deferred = <T = void>(): Deferred<T> => {
@@ -27,24 +27,37 @@ export const deferred = <T = void>(): Deferred<T> => {
   return self;
 };
 
-export const debounced = <T extends AnyFunction>(fn: T, ms: number) => {
+export const debounced = <T, A extends any[] = []>(
+  fn: (...args: A) => PromiseType<T>,
+  ms: number
+) => {
   let tid: any;
+  let p = deferred<T>();
 
-  return (...args: Parameters<T>) => {
+  return (...args: A): Promise<T> => {
     clearTimeout(tid);
-    tid = setTimeout(() => fn(...args), ms);
+    tid = setTimeout(() => {
+      p.resolve(toPromise(() => fn(...args)));
+      p = deferred();
+    }, ms);
+
+    return p;
   };
 };
 
-export const throttled = <T extends AnyFunction>(fn: T, ms: number) => {
+export const throttled = <T, A extends any[] = []>(
+  fn: (...args: A) => PromiseType<T>,
+  ms: number
+) => {
   let muted = false;
+  let p: Promise<T>;
 
-  return (...args: Parameters<T>) => {
-    if (muted) return;
+  return (...args: A): Promise<T> => {
+    if (muted) return p;
 
-    fn(...args);
     muted = true;
     setTimeout(() => (muted = false), ms);
+    return (p = toPromise(() => fn(...args)));
   };
 };
 
@@ -86,7 +99,7 @@ export const disposable = (...fns: Function[]) => {
   };
 };
 
-export function* g<T>(x: T): Generator<unknown, UnwrapPromise<T>> {
+export function* g<T>(x: PromiseType<T>): Generator<unknown, T> {
   return (yield x) as any;
 }
 

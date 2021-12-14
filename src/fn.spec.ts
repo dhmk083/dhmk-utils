@@ -47,16 +47,20 @@ describe("deferred", () => {
 });
 
 test("debounced", async () => {
-  const spy = jest.fn();
+  const spy = jest.fn((a, b, c) => a + b + c);
   const d = fn.debounced(spy, 10);
 
-  d(1, 2, 3);
-  d(4, 5, 6);
-  d(7, 8, 9);
+  const r1 = d(1, 2, 3);
+  const r2 = d(4, 5, 6);
+  const r3 = d(7, 8, 9);
 
-  const res = fn.sleep(10).then(() => {
+  const res = fn.sleep(10).then(async () => {
     expect(spy).toBeCalledTimes(1);
     expect(spy).toBeCalledWith(7, 8, 9);
+
+    expect(await r1).toEqual(7 + 8 + 9);
+    expect(await r1).toEqual(await r2);
+    expect(await r1).toEqual(await r3);
   });
 
   jest.runAllTimers();
@@ -64,23 +68,28 @@ test("debounced", async () => {
 });
 
 test("throttled", async () => {
-  const spy = jest.fn();
+  const spy = jest.fn((a, b, c) => a + b + c);
   const t = fn.throttled(spy, 10);
 
-  t(1, 2, 3);
-  t(4, 5, 6);
+  const r1 = t(1, 2, 3);
+  const r2 = t(4, 5, 6);
 
   const res = fn.sleep(5).then(() => {
-    t(7, 8, 9);
+    const r3 = t(7, 8, 9);
 
     expect(spy).toBeCalledTimes(1);
 
-    const _res = fn.sleep(5).then(() => {
-      t(10, 11, 12);
+    const _res = fn.sleep(5).then(async () => {
+      const r4 = t(10, 11, 12);
 
       expect(spy).toBeCalledTimes(2);
       expect(spy).nthCalledWith(1, 1, 2, 3);
       expect(spy).nthCalledWith(2, 10, 11, 12);
+
+      expect(await r1).toEqual(1 + 2 + 3);
+      expect(await r1).toEqual(await r2);
+      expect(await r1).toEqual(await r3);
+      expect(await r4).toEqual(10 + 11 + 12);
     });
     jest.advanceTimersByTime(5);
     return _res;
