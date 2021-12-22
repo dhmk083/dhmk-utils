@@ -1,3 +1,5 @@
+import { id } from "./std";
+
 type F<P, R> = (p: P) => R;
 
 type Refine<S, T> = {
@@ -11,11 +13,11 @@ export function selector(fa, fb?) {
   if (fb) return (s) => fb(fa(s));
   else {
     const ff =
-      (fb = (x) => x) =>
+      (fb = id) =>
       (s) =>
         fb(fa(s));
 
-    ff.refine = (fb = (x) => x) => selector((s) => fb(fa(s)));
+    ff.refine = (fb = id) => selector((s) => fb(fa(s)));
 
     return ff;
   }
