@@ -33,3 +33,5 @@ export type DeepReadonly<T> = T extends Primitive
   : {
       readonly [P in keyof T]: DeepReadonly<T[P]>;
     };
+
+export type ArrayItem<T> = T extends ReadonlyArray<infer U> ? U : never;

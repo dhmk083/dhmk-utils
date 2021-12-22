@@ -183,3 +183,21 @@ export function pLimited<A extends unknown[] = any, T = any>(
     return p;
   };
 }
+
+export function cancellable(
+  fn: (checkCancelled: <T>(x: T) => T) => any,
+  onCancel = noop
+) {
+  let isCancelled;
+
+  fn((x: any) => {
+    if (isCancelled) return new Promise(() => {});
+    // never resolves nor rejects
+    else return x;
+  });
+
+  return () => {
+    isCancelled = true;
+    onCancel();
+  };
+}
