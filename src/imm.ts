@@ -69,9 +69,10 @@ export const object = {
       ? (v: T[K], k: K) => T[K]
       : T[K] | ((v: T[K], k: K) => T[K])
   ) {
-    return Object.assign({}, obj, {
+    return {
+      ...obj,
       [key]: typeof what === "function" ? what(obj[key], key) : what,
-    });
+    };
   },
 
   delete<T extends object, K extends keyof T = keyof T>(obj: T, key: K) {

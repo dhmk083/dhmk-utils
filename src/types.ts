@@ -22,7 +22,21 @@ export type UnwrapPromise<T> = T extends PromiseLike<infer R>
 
 export type Overwrite<A, B> = Omit<A, keyof B> & B;
 
-type Primitive = undefined | null | boolean | string | number | Function;
+type Primitive =
+  | undefined
+  | null
+  | boolean
+  | string
+  | number
+  | Function
+  | Date
+  | RegExp;
+
+type NotPlainObject =
+  | Primitive
+  | ReadonlyArray<any>
+  | ReadonlySet<any>
+  | ReadonlyMap<any, any>;
 
 export type DeepReadonly<T> = T extends Primitive
   ? T
@@ -35,3 +49,9 @@ export type DeepReadonly<T> = T extends Primitive
     };
 
 export type ArrayItem<T> = T extends ReadonlyArray<infer U> ? U : never;
+
+export type DeepPartial<T> = T extends NotPlainObject
+  ? T
+  : {
+      [P in keyof T]?: T[P] extends NotPlainObject ? T[P] : DeepPartial<T[P]>;
+    };

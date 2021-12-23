@@ -1,4 +1,4 @@
-import { StrKeyOf, DeepReadonly } from "./types";
+import { StrKeyOf, DeepReadonly, DeepPartial } from "./types";
 
 export const noop = () => {};
 
@@ -9,6 +9,12 @@ export const range = (count: number, start = 0) =>
 
 export const arraysEqual = <T>(a: ReadonlyArray<T>, b: ReadonlyArray<T>) =>
   a.length === b.length && a.every((av, i) => av === b[i]);
+
+export const shallowEqual = (a: object, b: object) => {
+  const ka = Object.keys(a);
+  const kb = Object.keys(b);
+  return ka.length === kb.length && ka.every((k) => a[k] === b[k]);
+};
 
 export function objectFrom<V, K extends keyof any = keyof any>(
   entries: Iterable<[K, V]>
@@ -99,6 +105,26 @@ export const merge: Merge = (a, b?) => {
   return b ? { ...a, ...b } : (b) => ({ ...b, ...a });
 };
 
+type MergeDeep = {
+  <T>(a: T, b: DeepPartial<T>): T;
+  <T, P = DeepPartial<T>>(b: P): (a: T) => T;
+};
+
+const mergeDeepRec = (a, b) => {
+  if (!isPlainObject(a)) return b;
+
+  const res = { ...a };
+  for (const k in b) {
+    const v = b[k];
+    res[k] = mergeDeepRec(a[k], v);
+  }
+  return res;
+};
+
+export const mergeDeep: MergeDeep = (a, b?) => {
+  return b ? mergeDeepRec(a, b) : (b) => mergeDeepRec(b, a);
+};
+
 export const join = <A extends string, B extends string, S extends string>(
   a: A,
   sep: S,
@@ -116,3 +142,6 @@ export function assert(
 ): asserts condition {
   if (!condition) throw new Error(msg);
 }
+
+export const isPlainObject = (x): x is object =>
+  !!x && typeof x === "object" && Object.getPrototypeOf(x) === Object.prototype;
