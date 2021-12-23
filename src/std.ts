@@ -145,3 +145,12 @@ export function assert(
 
 export const isPlainObject = (x): x is object =>
   !!x && typeof x === "object" && Object.getPrototypeOf(x) === Object.prototype;
+
+export function flatMap<T, R>(
+  src: ReadonlyArray<T>,
+  fn: (item: T, index: number) => ReadonlyArray<R>
+) {
+  const res: R[] = [];
+  src.forEach((x, i) => res.push(...fn(x, i)));
+  return res;
+}
