@@ -14,6 +14,10 @@ export type Initializer1<A, T = A> = T extends Function
   ? never
   : T | ((arg: A) => T);
 
+export type ValueOrFunction<T> = T extends Function
+  ? (value: T) => T
+  : T | ((value: T) => T);
+
 export type PromiseType<T> = T | PromiseLike<T>;
 
 export type UnwrapPromise<T> = T extends PromiseLike<infer R>
