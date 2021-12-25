@@ -111,7 +111,7 @@ type MergeDeep = {
 };
 
 const mergeDeepRec = (a, b) => {
-  if (!isPlainObject(a)) return b;
+  if (!isPlainObject(a) || !isPlainObject(b)) return b;
 
   const res = { ...a };
   for (const k in b) {
