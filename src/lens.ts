@@ -1,6 +1,6 @@
 import { ValueOrFunction } from "./types";
 
-type PropType<T, Path extends string[]> = Path extends [infer K]
+export type PropType<T, Path extends string[]> = Path extends [infer K]
   ? K extends keyof T
     ? T[K]
     : unknown
