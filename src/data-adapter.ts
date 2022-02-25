@@ -50,6 +50,14 @@ type DataAdapter<T, E extends string, I extends string> = {
 
 const defaultId = <T extends WithId>(x: T) => x.id;
 
+type ById = {
+  <T extends { id: K }, K extends string | number>(arr: T[]): Record<K, T>;
+  <T, K extends string | number>(arr: T[], getId: (x: T) => K): Record<K, T>;
+};
+
+export const byId: ById = (arr, getId = (x) => x.id) =>
+  objectFrom(arr.map((x) => [getId(x), x]));
+
 export function dataAdapter<T extends WithId>(): DataAdapter<
   T,
   DefaultEntitiesKey,
@@ -71,7 +79,7 @@ export function dataAdapter(
 ) {
   function from(data) {
     return {
-      [entitiesKey]: objectFrom(data.map((x) => [getId(x), x])),
+      [entitiesKey]: byId(data, getId as any),
       [idsKey]: data.map(getId),
     };
   }
