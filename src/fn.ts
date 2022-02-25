@@ -1,4 +1,4 @@
-import { PromiseType } from "./types";
+import { PromiseType, AnyFunction, CancellablePromise } from "./types";
 import { noop } from "./std";
 
 export const toPromise = <T>(fn: () => PromiseType<T>): Promise<T> => {
@@ -103,19 +103,19 @@ export function* g<T>(x: PromiseType<T>): Generator<unknown, T> {
   return (yield x) as any;
 }
 
-type Cancellable = {
+export type CancellableFlow = {
   readonly isCancelled: boolean;
   cancel(): void;
 };
 
-export type Flow<T> = Promise<T> & { cancel(): void };
+export type Flow<T> = CancellablePromise<T>;
 
 export const runStep = (g: Generator, arg: any, isError: boolean) =>
   isError ? g.throw(arg) : g.next(arg);
 
 export function flow<T>(
   this: any,
-  fn: (ctx: Cancellable) => Generator<any, T>,
+  fn: (ctx: CancellableFlow) => Generator<any, T>,
   run = runStep
 ): Flow<T> {
   const ctx = {
@@ -184,20 +184,43 @@ export function pLimited<A extends unknown[] = any, T = any>(
   };
 }
 
-export function cancellable(
-  fn: (checkCancelled: <T>(x: T) => T) => any,
-  onCancel = noop
-) {
-  let isCancelled;
+export type CancellableContext = {
+  <T>(x: T): Promise<T>;
+  readonly isCancelled: boolean;
+  onCancel(cb: Function);
+};
 
-  fn((x: any) => {
-    if (isCancelled) return new Promise(() => {});
-    // never resolves nor rejects
+export function cancellable<T>(fn: (ctx: CancellableContext) => T) {
+  const ctx = (x) => {
+    if (ctx.isCancelled) return new Promise(() => {});
     else return x;
-  });
+  };
 
-  return () => {
-    isCancelled = true;
-    onCancel();
+  ctx.isCancelled = false;
+  ctx.cb = noop;
+  ctx.onCancel = (fn) => (ctx.cb = fn);
+  ctx.cancel = () => {
+    ctx.isCancelled = true;
+    ctx.cb();
+  };
+
+  const p = new Promise((resolve) => resolve(fn(ctx))) as CancellablePromise<T>;
+  p.cancel = ctx.cancel;
+
+  return p;
+}
+
+export function makeCancellable<T extends AnyFunction>(
+  fn: (ctx: CancellableContext) => T
+) {
+  let prev = cancellable(() => {});
+
+  return (...args: Parameters<T>): CancellablePromise<ReturnType<T>> => {
+    prev.cancel();
+
+    return (prev = cancellable((ctx) => fn(ctx)(...args)));
   };
 }
+
+export const cancellableEffect = (fn: (ctx: CancellableContext) => any) =>
+  cancellable(fn).cancel;

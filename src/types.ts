@@ -59,3 +59,5 @@ export type DeepPartial<T> = T extends NotPlainObject
   : {
       [P in keyof T]?: T[P] extends NotPlainObject ? T[P] : DeepPartial<T[P]>;
     };
+
+export type CancellablePromise<T> = Promise<T> & { cancel() };
