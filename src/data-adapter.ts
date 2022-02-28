@@ -90,9 +90,9 @@ export function dataAdapter(
   entitiesKey = defaultEntitiesKey,
   idsKey = defaultIdsKey
 ) {
-  function from(dataOrIds, byId?) {
-    const data = byId ? fromIds(dataOrIds, byId) : dataOrIds;
-    const ids = byId ? dataOrIds : data.map(getId);
+  function from(dataOrIds, cacheById?) {
+    const data = cacheById ? fromIds(dataOrIds, cacheById) : dataOrIds;
+    const ids = cacheById ? dataOrIds : data.map(getId);
 
     return {
       [entitiesKey]: byId(data, getId as any),
