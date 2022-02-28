@@ -54,6 +54,8 @@ type DataAdapter<T, E extends string, I extends string> = {
     where: string | ((item: T, index: number, id: string) => boolean),
     what: (item: T, index: number, id: string) => T
   ): NormalizedData<T, E, I>;
+
+  toArray(context: NormalizedData<T, E, I>): ReadonlyArray<T>;
 };
 
 const defaultId = <T extends WithId>(x: T) => x.id;
@@ -163,6 +165,10 @@ export function dataAdapter(
     };
   }
 
+  function toArray(context) {
+    return fromIds(context[idsKey], context[entitiesKey]) as any;
+  }
+
   return {
     getId,
     from,
@@ -171,5 +177,6 @@ export function dataAdapter(
     append,
     remove,
     update,
+    toArray,
   };
 }
