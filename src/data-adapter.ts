@@ -10,7 +10,8 @@ export type NormalizedData<
   T,
   EntitiesKey extends string = DefaultEntitiesKey,
   IdsKey extends string = DefaultIdsKey
-> = Record<EntitiesKey, Record<string, T>> & Record<IdsKey, string[]>;
+> = Record<EntitiesKey, Record<string, T>> &
+  Record<IdsKey, ReadonlyArray<string>>;
 
 type WithId = {
   [p: string]: any;
@@ -18,7 +19,14 @@ type WithId = {
 };
 
 type DataAdapter<T, E extends string, I extends string> = {
+  getId(item: T): string;
+
   from(data: ReadonlyArray<T>): NormalizedData<T, E, I>;
+
+  from(
+    ids: ReadonlyArray<string>,
+    byId: Record<string, T>
+  ): NormalizedData<T, E, I>;
 
   flatMap(
     context: NormalizedData<T, E, I>,
@@ -58,6 +66,11 @@ type ById = {
 export const byId: ById = (arr, getId = (x) => x.id) =>
   objectFrom(arr.map((x) => [getId(x), x]));
 
+export const fromIds = <T>(
+  ids: ReadonlyArray<string>,
+  byId: Record<string, T>
+) => ids.map((id) => byId[id]);
+
 export function dataAdapter<T extends WithId>(): DataAdapter<
   T,
   DefaultEntitiesKey,
@@ -77,10 +90,13 @@ export function dataAdapter(
   entitiesKey = defaultEntitiesKey,
   idsKey = defaultIdsKey
 ) {
-  function from(data) {
+  function from(dataOrIds, byId?) {
+    const data = byId ? fromIds(dataOrIds, byId) : dataOrIds;
+    const ids = byId ? dataOrIds : data.map(getId);
+
     return {
       [entitiesKey]: byId(data, getId as any),
-      [idsKey]: data.map(getId),
+      [idsKey]: ids,
     };
   }
 
@@ -92,7 +108,10 @@ export function dataAdapter(
   }
 
   function insert(context, index, ...items) {
-    const atEnd = index === context[idsKey].length;
+    const { length } = context[idsKey];
+    if (!length) return from(items);
+
+    const atEnd = index === length;
     if (atEnd) index--;
 
     return flatMap(context, (x, i) =>
@@ -145,6 +164,7 @@ export function dataAdapter(
   }
 
   return {
+    getId,
     from,
     flatMap,
     insert,
