@@ -49,15 +49,29 @@ export const throttled = <T, A extends any[] = []>(
   fn: (...args: A) => PromiseType<T>,
   ms: number
 ) => {
-  let muted = false;
-  let p: Promise<T>;
+  let p: Promise<T> | undefined;
 
   return (...args: A): Promise<T> => {
-    if (muted) return p;
+    if (!p) {
+      p = toPromise(() => fn(...args));
+      setTimeout(() => (p = undefined), ms);
+    }
 
-    muted = true;
-    setTimeout(() => (muted = false), ms);
-    return (p = toPromise(() => fn(...args)));
+    return p;
+  };
+};
+
+export const throttledAsync = <T, A extends any[] = []>(
+  fn: (...args: A) => PromiseType<T>
+) => {
+  let p: Promise<T> | undefined;
+
+  return (...args: A): Promise<T> => {
+    if (!p) {
+      p = toPromise(() => fn(...args)).finally(() => (p = undefined));
+    }
+
+    return p;
   };
 };
 
