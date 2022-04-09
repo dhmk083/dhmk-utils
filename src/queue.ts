@@ -5,13 +5,10 @@ export function queue() {
   let head = Promise.resolve();
 
   return function <T>(fn: () => Promise<T>): Promise<T> {
-    const p = deferred<T>();
+    const h = head;
+    const d = (head = deferred());
 
-    head = head.then(() => {
-      p.resolve(toPromise(fn) as any);
-    });
-
-    return p as any;
+    return h.then(() => fn()).finally(() => d.resolve(undefined));
   };
 }
 
