@@ -1,6 +1,6 @@
 {
   "name": "@dhmk/utils",
-  "version": "2.4.0",
+  "version": "2.4.1",
   "description": "A collection of frequently used functions and primitives",
   "keywords": [
     "utils",
@@ -22,7 +22,6 @@
   "scripts": {
     "preversion": "yarn test && yarn build",
     "version": "git add -A",
-    "postversion": "git push && git push --tags",
     "clean": "rm -rf lib esm",
     "build": "yarn clean && tsc && tsc -m esnext --outDir esm",
     "test": "yarn clean && jest"
