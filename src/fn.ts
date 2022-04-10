@@ -1,5 +1,11 @@
-import { PromiseType, AnyFunction, CancellablePromise } from "./types";
+import {
+  PromiseType,
+  AnyFunction,
+  CancellablePromise,
+  Cancelled,
+} from "./types";
 import { noop } from "./std";
+import { queue } from "./queue";
 
 export const toPromise = <T>(fn: () => PromiseType<T>): Promise<T> => {
   try {
@@ -206,7 +212,7 @@ export type CancellableContext = {
 
 export function cancellable<T>(fn: (ctx: CancellableContext) => T) {
   const ctx = (x) => {
-    if (ctx.isCancelled) return new Promise(() => {});
+    if (ctx.isCancelled) return Promise.reject(Cancelled);
     else return x;
   };
 
@@ -218,21 +224,34 @@ export function cancellable<T>(fn: (ctx: CancellableContext) => T) {
     ctx.cb();
   };
 
-  const p = new Promise((resolve) => resolve(fn(ctx))) as CancellablePromise<T>;
+  const p = new Promise((resolve) => resolve(fn(ctx))).catch((e) => {
+    if (e === Cancelled) return Cancelled;
+    else throw e;
+  }) as CancellablePromise<T>;
   p.cancel = ctx.cancel;
 
   return p;
 }
 
+export const cancellableState = () => ({
+  q: queue(),
+  prev: cancellable(() => {}),
+});
+
+export type CancellableState = ReturnType<typeof cancellableState>;
+
 export function makeCancellable<T extends AnyFunction>(
-  fn: (ctx: CancellableContext) => T
+  fn: (ctx: CancellableContext) => T,
+  state = cancellableState()
 ) {
-  let prev = cancellable(() => {});
-
   return (...args: Parameters<T>): CancellablePromise<ReturnType<T>> => {
-    prev.cancel();
+    state.prev.cancel();
 
-    return (prev = cancellable((ctx) => fn(ctx)(...args)));
+    return (state.prev = cancellable((checkCancel) =>
+      state.q(() =>
+        Promise.resolve(checkCancel(0).then(() => fn(checkCancel)(...args)))
+      )
+    ));
   };
 }
 

@@ -1,5 +1,11 @@
-import { deferred, toPromise } from "./fn";
-import { Tagged } from "./types";
+import {
+  deferred,
+  toPromise,
+  cancellable,
+  flow,
+  CancellableContext,
+} from "./fn";
+import { Cancelled, CancellablePromise } from "./types";
 
 export function queue() {
   let head = Promise.resolve();
@@ -12,46 +18,48 @@ export function queue() {
   };
 }
 
-export type Cancelled = Tagged<{}, "Cancelled">;
-export const Cancelled = {} as Cancelled;
-
 export function createChain(
-  create: (arg: unknown) => [task: Promise<unknown>, abort: Function]
+  create: (arg: unknown) => [task: Promise<unknown>, cancel: () => any]
 ) {
   const q = queue();
   let p;
-  let abort;
+  let cancel;
   let prev = { cancelled: false };
 
   return function (arg: unknown) {
     prev.cancelled = true;
-    abort?.();
+    cancel?.();
     const cc = (prev = { cancelled: false });
 
     return q<unknown | Cancelled>(() => {
       if (cc.cancelled) return Promise.resolve(Cancelled);
 
-      [p, abort] = create(arg);
+      [p, cancel] = create(arg);
       return p;
     });
   };
 }
 
-export function chain(): <T>(
-  fn: (as: AbortSignal) => Promise<T>
-) => Promise<T | Cancelled> {
+// const canChain = createChain((fn: any) => {
+//   const f = fn();
+//   return [f, f.cancel.bind(f)];
+// });
+
+export function asyncChain(): <T>(
+  fn: (ctx: CancellableContext) => Promise<T>
+) => CancellablePromise<T> {
   return createChain((fn: any) => {
-    const ac = new AbortController();
-    return [fn(ac.signal), ac.abort.bind(ac)];
+    const c = cancellable(fn);
+    return [c, c.cancel.bind(c)];
   }) as any;
 }
 
 export function flowChain(): <T>(
-  fn: () => Promise<T> & { cancel() }
-) => Promise<T | Cancelled> {
+  fn: () => Generator<unknown, T>
+) => CancellablePromise<T> {
   return createChain((fn: any) => {
-    const flow = fn();
-    return [flow, flow.cancel.bind(flow)];
+    const f = flow(fn);
+    return [f, f.cancel.bind(f)];
   }) as any;
 }
 
