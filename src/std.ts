@@ -154,3 +154,40 @@ export function flatMap<T, R>(
   src.forEach((x, i) => res.push(...fn(x, i)));
   return res;
 }
+
+type DiffOptions<T> = {
+  getId?: (x: T) => any;
+  enter?: (x: T, i: number) => any;
+  exit?: (x: T, i: number) => any;
+  update?: (x: T, newIndex: number, oldIndex: number) => any;
+};
+
+export function diff<T>(
+  a: ReadonlyArray<T>,
+  b: ReadonlyArray<T>,
+  { getId = id, enter, exit, update }: DiffOptions<T>
+) {
+  const ma = enter ? new Map(a.map((x, i) => [getId(x), i])) : undefined;
+  const mb =
+    exit || update ? new Map(b.map((x, i) => [getId(x), i])) : undefined;
+
+  mb &&
+    a.forEach((x, i) => {
+      const bi = mb.get(getId(x));
+
+      if (bi === undefined) {
+        exit?.(x, i);
+      } else if (i !== bi) {
+        update?.(x, bi, i);
+      }
+    });
+
+  ma &&
+    b.forEach((x, i) => {
+      const ai = ma.get(getId(x));
+
+      if (ai === undefined) {
+        enter?.(x, i);
+      }
+    });
+}
