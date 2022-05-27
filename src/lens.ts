@@ -3,11 +3,19 @@ import { ValueOrFunction } from "./types";
 export type PropType<T, Path extends string[]> = Path extends [infer K]
   ? K extends keyof T
     ? T[K]
+    : T extends ReadonlyArray<any>
+    ? K extends `${number}`
+      ? T[number]
+      : unknown
     : unknown
   : Path extends [infer K, ...infer R]
-  ? K extends keyof T
-    ? R extends string[]
+  ? R extends string[]
+    ? K extends keyof T
       ? PropType<T[K], R>
+      : T extends ReadonlyArray<any>
+      ? K extends `${number}`
+        ? PropType<T[number], R>
+        : unknown
       : unknown
     : unknown
   : unknown;
