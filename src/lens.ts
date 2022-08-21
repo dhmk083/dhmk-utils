@@ -1,5 +1,3 @@
-import { ValueOrFunction } from "./types";
-
 export type PropType<T, Path extends string[]> = Path extends [infer K]
   ? K extends keyof T
     ? T[K]
@@ -22,25 +20,31 @@ export type PropType<T, Path extends string[]> = Path extends [infer K]
 
 export const getIn = <T, P extends string[]>(
   x: T,
-  path: [...P]
+  path: readonly [...P]
 ): PropType<T, P> => path.reduce((src: any, k) => src[k], x) as any;
 
-export const setIn = <T, P extends string[]>(
+export const updateIn = <T, P extends string[]>(
   x: T,
-  path: [...P],
-  v: ValueOrFunction<PropType<T, P>>
+  path: readonly [...P],
+  updater: (value: PropType<T, P>) => PropType<T, P>
 ): T => {
   if (path.length === 0) {
-    return typeof v === "function" ? v(x) : v;
+    return updater(x as any) as any;
   }
 
   const [k, ...rest] = path;
-  const value = setIn((x as any)[k], rest, v);
+  const value = updateIn((x as any)[k], rest as any, updater);
 
   return Array.isArray(x)
     ? arraySet(x, Number(k), value)
     : objectSet(x, k, value);
 };
+
+export const setIn = <T, P extends string[]>(
+  x: T,
+  path: readonly [...P],
+  v: PropType<T, P>
+): T => updateIn(x, path, () => v);
 
 const arraySet = (x, k, v) => x.map((_v, i) => (i === k ? v : _v));
 
