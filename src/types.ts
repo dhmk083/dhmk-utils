@@ -26,18 +26,14 @@ export type UnwrapPromise<T> = T extends PromiseLike<infer R>
 
 export type Overwrite<A, B> = Omit<A, keyof B> & B;
 
-type Primitive =
-  | undefined
+export type Primitive = undefined | boolean | string | number | symbol | bigint;
+
+export type NotPlainObject =
+  | Primitive
   | null
-  | boolean
-  | string
-  | number
   | Function
   | Date
-  | RegExp;
-
-type NotPlainObject =
-  | Primitive
+  | RegExp
   | ReadonlyArray<any>
   | ReadonlySet<any>
   | ReadonlyMap<any, any>;
