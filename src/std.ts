@@ -47,7 +47,7 @@ export function objectMap(src: any, mapValue: any, mapKey = id as any): any {
 }
 
 export function objectTransform<
-  T,
+  T extends object,
   K extends keyof any = keyof T,
   V = T[keyof T]
 >(
