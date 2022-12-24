@@ -34,6 +34,7 @@ export type NotPlainObject =
   | Function
   | Date
   | RegExp
+  | Error
   | ReadonlyArray<any>
   | ReadonlySet<any>
   | ReadonlyMap<any, any>;
