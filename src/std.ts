@@ -113,10 +113,9 @@ type MergeDeep = {
 const mergeDeepRec = (a, b) => {
   if (!isPlainObject(a) || !isPlainObject(b)) return b;
 
-  const res = { ...a };
+  const res = { ...a, ...b }; // copy symbols
   for (const k in b) {
-    const v = b[k];
-    res[k] = mergeDeepRec(a[k], v);
+    res[k] = mergeDeepRec(a[k], b[k]);
   }
   return res;
 };
