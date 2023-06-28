@@ -1,42 +1,68 @@
+export type Unsubscribe = () => void;
+
 export type Listener<T> = (x: T) => void;
 
-export function signal<T = void>() {
-  const subs = new Set<any>();
-  const self = (x: T) => subs.forEach((s) => s(x));
+export interface Event<T> {
+  subscribe(fn: Listener<T>): Unsubscribe;
+}
 
-  self.subscribe = (fn: Listener<T>) => {
-    subs.add(fn);
-    return () => {
-      subs.delete(fn);
-    };
-  };
+export interface Signal<T> extends Event<T> {
+  (x: T): void;
+  event(): Event<T>;
+}
+
+export function signal<T = void>({
+  listeners = new Set<Listener<T>>(),
+  emit = (fn: (x: T) => void) => fn,
+  subscribe = (fn: (x: Listener<T>) => Unsubscribe) => fn,
+} = {}): Signal<T> {
+  const self: any = emit((x: T) => {
+    const errors: any[] = [];
+
+    listeners.forEach((fn) => {
+      try {
+        fn(x);
+      } catch (e) {
+        errors.push(e);
+      }
+    });
+
+    if (errors.length) throw new AggregateError(errors);
+  });
+
+  self.subscribe = subscribe((fn) => {
+    listeners.add(fn);
+    return () => listeners.delete(fn);
+  });
+
+  self.event = () => self;
 
   return self;
 }
 
-// todo: signal improvement (multi args + customizable)
+type Signals<T> = {
+  [P in keyof T]: T[P] extends Signal<infer S> ? Signal<S> : Signals<T[P]>;
+};
 
-// export type Listener<A extends any[]> = (...args: A) => void;
+type Events<T> = {
+  [P in keyof T]: T[P] extends Signal<infer S> ? Event<S> : Events<T[P]>;
+};
 
-// export type Signal<A extends any[]> = {
-//   subscribe(fn: Listener<A>): () => void;
-// };
+export function asEvents<T extends Signals<T>>(x: T): Events<T> {
+  return x as any;
+}
 
-// export function signal<A extends any[] = []>({
-//   listeners = new Set<any>(),
-//   emit = (fn: (...args: A) => void) => fn,
-//   subscribe = (fn: (fn: Listener<A>) => () => void) => fn,
-// } = {}) {
-//   const self: any = emit((...args: A) =>
-//     listeners.forEach((s) => s(...args))
-//   );
-
-//   self.subscribe = subscribe((fn: Listener<A>) => {
-//     listeners.add(fn);
-//     return () => {
-//       listeners.delete(fn);
-//     };
-//   });
-
-//   return self as ((...args: A) => void) & Signal<A>;
-// }
+export function once<T>(ev: Event<T>, onValue?: Listener<T>) {
+  return new Promise<T>((res, rej) => {
+    const unsub = ev.subscribe((x) => {
+      try {
+        onValue?.(x);
+        res(x);
+      } catch (e) {
+        rej(e);
+      } finally {
+        unsub();
+      }
+    });
+  });
+}
