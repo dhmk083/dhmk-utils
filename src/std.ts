@@ -190,3 +190,12 @@ export function diff<T>(
       }
     });
 }
+
+export function overwrite<T extends object>(x: T, fn: (x: T) => Partial<T>): T {
+  const snapshot = Object.defineProperties(
+    {} as T,
+    Object.getOwnPropertyDescriptors(x)
+  );
+  const newProps = Object.getOwnPropertyDescriptors(fn(snapshot));
+  return Object.defineProperties(x, newProps);
+}
