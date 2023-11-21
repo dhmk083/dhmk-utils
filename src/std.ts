@@ -97,17 +97,21 @@ export const call = <T>(fn: () => T) => fn();
 export const deepReadonly = <T>(x: T) => x as DeepReadonly<T>;
 
 type Merge = {
-  <T>(a: T, b: Partial<T>): T;
-  <T, P = Partial<T>>(b: P): (a: T) => T;
+  <T>(a: T, b: Partial<T> | ((a: T) => Partial<T>)): T;
+  <T, P extends T = T>(b: Partial<P> | ((a: T) => Partial<P>)): (a: T) => T;
 };
 
+const merge2 = (a, b) => ({ ...a, ...(typeof b === "function" ? b(a) : b) });
+
 export const merge: Merge = (a, b?) => {
-  return b ? { ...a, ...b } : (b) => ({ ...b, ...a });
+  return b ? merge2(a, b) : (b) => merge2(b, a);
 };
 
 type MergeDeep = {
-  <T>(a: T, b: DeepPartial<T>): T;
-  <T, P = DeepPartial<T>>(b: P): (a: T) => T;
+  <T>(a: T, b: DeepPartial<T> | ((a: T) => DeepPartial<T>)): T;
+  <T, P extends T = T>(b: DeepPartial<P> | ((a: T) => DeepPartial<P>)): (
+    a: T
+  ) => T;
 };
 
 const mergeDeepRec = (a, b) => {
@@ -120,8 +124,11 @@ const mergeDeepRec = (a, b) => {
   return res;
 };
 
+const mergeDeep2 = (a, b) =>
+  mergeDeepRec(a, typeof b === "function" ? b(a) : b);
+
 export const mergeDeep: MergeDeep = (a, b?) => {
-  return b ? mergeDeepRec(a, b) : (b) => mergeDeepRec(b, a);
+  return b ? mergeDeep2(a, b) : (b) => mergeDeep2(b, a);
 };
 
 export const join = <A extends string, B extends string, S extends string>(
