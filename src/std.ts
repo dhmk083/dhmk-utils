@@ -97,7 +97,7 @@ export const call = <T>(fn: () => T) => fn();
 export const deepReadonly = <T>(x: T) => x as DeepReadonly<T>;
 
 type Merge = {
-  <T>(a: T, b: Partial<T> | ((a: T) => Partial<T>)): T;
+  <T, P extends T = T>(a: T, b: Partial<P> | ((a: T) => Partial<P>)): T;
   <T, P extends T = T>(b: Partial<P> | ((a: T) => Partial<P>)): (a: T) => T;
 };
 
@@ -108,7 +108,7 @@ export const merge: Merge = (a, b?) => {
 };
 
 type MergeDeep = {
-  <T>(a: T, b: DeepPartial<T> | ((a: T) => DeepPartial<T>)): T;
+  <T, P extends T = T>(a: T, b: DeepPartial<P> | ((a: T) => DeepPartial<P>)): T;
   <T, P extends T = T>(b: DeepPartial<P> | ((a: T) => DeepPartial<P>)): (
     a: T
   ) => T;
