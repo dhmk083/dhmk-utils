@@ -35,14 +35,24 @@ export function objectMap<T extends object, V extends ValueMapper<T>>(
 export function objectMap<T extends object>(
   src: T,
   mapValue: ValueMapper<T>,
-  mapKey?: KeyMapper<T>
+  mapKey?: KeyMapper<T>,
+  mapSymbol?: (v: T[keyof T & symbol], k: keyof T & symbol, src: T) => unknown
 ): any;
-export function objectMap(src: any, mapValue: any, mapKey = id as any): any {
+export function objectMap(
+  src: any,
+  mapValue: any,
+  mapKey = id as any,
+  mapSymbol = id as any
+): any {
   return objectFrom(
-    Object.keys(src).map((k) => [
-      mapKey(k, src[k], src),
-      mapValue(src[k], k, src),
-    ])
+    Object.keys(src)
+      .map((k) => [mapKey(k, src[k], src), mapValue(src[k], k, src)])
+      .concat(
+        Object.getOwnPropertySymbols(src).map((k) => [
+          k,
+          mapSymbol(src[k], k, src),
+        ])
+      ) as any
   );
 }
 
@@ -56,6 +66,7 @@ export function objectTransform<
 ): Record<K, V> {
   return objectFrom(
     Object.keys(src)
+      .concat(Object.getOwnPropertySymbols(src) as any)
       .map((k) => mapEntry(src[k], k as any, src))
       .filter(Boolean) as any
   );
@@ -106,6 +117,9 @@ const merge2 = (a, b) => ({ ...a, ...(typeof b === "function" ? b(a) : b) });
 export const merge: Merge = (a, b?) => {
   return b ? merge2(a, b) : (b) => merge2(b, a);
 };
+
+// U is needed to leverage DeepPartial<T>
+// declare const update: <T, U extends Exclude<T, undefined>>(fn: (s: U) => T) => T
 
 type MergeDeep = {
   <T, P extends T = T>(a: T, b: DeepPartial<P> | ((a: T) => DeepPartial<P>)): T;
