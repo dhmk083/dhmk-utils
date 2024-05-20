@@ -220,3 +220,19 @@ export function overwrite<T extends object>(x: T, fn: (x: T) => Partial<T>): T {
   const newProps = Object.getOwnPropertyDescriptors(fn(snapshot));
   return Object.defineProperties(x, newProps);
 }
+
+export function memoize<A extends any[], R>(fn: (...args: A) => R) {
+  let prevArgs;
+  let prevResult;
+
+  return function (...args: A): R {
+    if (prevArgs && arraysEqual(prevArgs, args)) {
+      return prevResult;
+    }
+
+    prevArgs = undefined; // in case of exception
+    prevResult = fn(...args);
+    prevArgs = args;
+    return prevResult;
+  };
+}
